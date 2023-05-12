@@ -1,18 +1,14 @@
-import io.github.gradlenexus.publishplugin.CloseNexusStagingRepository
-import io.github.gradlenexus.publishplugin.ReleaseNexusStagingRepository
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     id("com.gradle.plugin-publish") version "1.0.0"
-    id("io.github.gradle-nexus.publish-plugin") version "1.1.0"
     id("java-gradle-plugin")
     id("maven-publish")
     id("org.gradle.kotlin.kotlin-dsl") version "2.4.1"
     id("org.jetbrains.kotlin.jvm") version "1.7.10"
-    id("signing")
 }
 
-group = "org.openapitools"
+group = "com.alliander"
 version = "$openApiGeneratorVersion"
 ext.isReleaseVersion = !version.endsWith("SNAPSHOT")
 
@@ -40,7 +36,7 @@ repositories {
 }
 
 dependencies {
-    implementation("org.openapitools:openapi-generator:$openApiGeneratorVersion")
+    implementation("com.alliander:openapi-generator:$openApiGeneratorVersion")
     testImplementation("org.jetbrains.kotlin:kotlin-test-testng:1.7.10")
 }
 
@@ -73,14 +69,6 @@ tasks.withType(Javadoc).configureEach {
     }
 }
 
-tasks.withType(CloseNexusStagingRepository).configureEach {
-    onlyIf { nexusPublishing.useStaging.get() }
-}
-
-tasks.withType(ReleaseNexusStagingRepository).configureEach {
-    onlyIf { nexusPublishing.useStaging.get() }
-}
-
 gradlePlugin {
     website = "https://openapi-generator.tech/"
     vcsUrl = "https://github.com/OpenAPITools/openapi-generator"
@@ -95,35 +83,23 @@ gradlePlugin {
     }
 }
 
-nexusPublishing {
-    repositories {
-        sonatype {
-            username = project.properties["ossrhUsername"]
-            password = project.properties["ossrhPassword"]
 
-            // To retrieve: ./gradlew -Psigning.keyId="$SIGNING_KEY" -Psigning.password="$SIGNING_PASSPHRASE" -Psigning.secretKeyRingFile="$SIGNING_SECRET" getStagingProfile
-            stagingProfileId = "456297f829bbbe"
+publishing {
+    repositories {
+        maven {
+            url = "http://localhost:9090/repository/maven-releases/"
+            allowInsecureProtocol = true
+            credentials {
+                username = "upload_pypi"
+                password = "fx4JiKUkHuUUax7Kf4xW"
+            }
         }
     }
-}
-
-// Signing requires three keys to be defined: signing.keyId, signing.password, and signing.secretKeyRingFile.
-// These can be passed to the Gradle command:
-//     ./gradlew -Psigning.keyId=yourid
-// or stored as key=value pairs in ~/.gradle/gradle.properties
-// You can also apply them in CI via environment variables. See Gradle's docs for details.
-signing {
-    required { isReleaseVersion && gradle.taskGraph.hasTask("publishPluginMavenPublicationToSonatypeRepository") }
-    sign(publishing.publications)
 }
 
 // afterEvaluate is necessary because java-gradle-plugin
 // creates its publications in an afterEvaluate callback
 afterEvaluate {
-    tasks.named("publishToSonatype").configure {
-        dependsOn("check")
-    }
-
     publishing {
         publications {
             pluginMaven {
